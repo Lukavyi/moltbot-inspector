@@ -127,6 +127,10 @@ npm test          # Unit tests (Vitest)
 npm run build     # Production build → dist/
 ```
 
+## Built with Moltbot 🤖
+
+This entire project was vibe-coded through [Moltbot](https://molt.bot) — from the first line of code to npm publish. No manual coding involved. The irony of an AI agent building its own inspector is not lost on us.
+
 ## License
 
 MIT
