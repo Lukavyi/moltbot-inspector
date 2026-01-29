@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { fetchSessions, fetchCounts, fetchCSV, fetchDanger, fetchProgress, saveProgress as saveProgressApi, fetchSession, connectSSE } from './api';
+import { fetchSessions, fetchCounts, fetchCSV, fetchDanger, fetchProgress, saveProgress as saveProgressApi, fetchSession, connectSSE, searchSessions } from './api';
 import { parseCSV, shortName, progressKey } from './utils';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import Sidebar from './components/Sidebar';
@@ -26,6 +26,20 @@ export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [toasts, setToasts] = useState<ToastType[]>([]);
   const [loading, setLoading] = useState(false);
+  const [contentMatches, setContentMatches] = useState<Set<string> | null>(null);
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Debounced content search
+  useEffect(() => {
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    const q = sidebarSearch.trim();
+    if (q.length < 2) { setContentMatches(null); return; }
+    searchTimerRef.current = setTimeout(async () => {
+      const results = await searchSessions(q);
+      setContentMatches(new Set(results));
+    }, 300);
+    return () => { if (searchTimerRef.current) clearTimeout(searchTimerRef.current); };
+  }, [sidebarSearch]);
 
   const progressRef = useRef(progress);
   progressRef.current = progress;
@@ -277,6 +291,7 @@ export default function App() {
         setActiveSort={setActiveSort}
         searchQuery={sidebarSearch}
         setSearchQuery={setSidebarSearch}
+        contentMatches={contentMatches}
         onSelect={handleSelectSession}
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}

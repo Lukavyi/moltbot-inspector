@@ -64,6 +64,7 @@ interface SidebarProps {
   setActiveSort: (s: string) => void;
   searchQuery: string;
   setSearchQuery: (q: string) => void;
+  contentMatches: Set<string> | null;
   onSelect: (filename: string) => void;
   isOpen: boolean;
   onClose: () => void;
@@ -72,7 +73,7 @@ interface SidebarProps {
 export default function Sidebar({
   sessions, progress, dangerData, currentFile,
   filters, setFilters, activeSort, setActiveSort,
-  searchQuery, setSearchQuery, onSelect, isOpen, onClose
+  searchQuery, setSearchQuery, contentMatches, onSelect, isOpen, onClose
 }: SidebarProps) {
   // Count sessions per filter for badges
   const counts = useMemo(() => {
@@ -98,14 +99,19 @@ export default function Sidebar({
     return sorted.filter(r => {
       if (!matchesFilters(r, filters, progress, dangerData)) return false;
       if (!q) return true;
+      // Local metadata match
       const cl = progress[progressKey(r)]?.customLabel || '';
-      return (r.Filename || '').toLowerCase().includes(q) ||
+      const localMatch = (r.Filename || '').toLowerCase().includes(q) ||
         (r.Label || '').toLowerCase().includes(q) ||
         cl.toLowerCase().includes(q) ||
         (r.Description || '').toLowerCase().includes(q) ||
         (r.Reason || '').toLowerCase().includes(q);
+      if (localMatch) return true;
+      // Server-side content match
+      if (contentMatches && contentMatches.has(r.Filename)) return true;
+      return false;
     });
-  }, [sessions, filters, activeSort, searchQuery, progress, dangerData]);
+  }, [sessions, filters, activeSort, searchQuery, progress, dangerData, contentMatches]);
 
   const toggleLifecycle = (key: string) => {
     const lc = filters.lifecycle.includes(key)

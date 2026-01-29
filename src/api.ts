@@ -41,6 +41,12 @@ export async function saveProgress(data: Progress): Promise<void> {
   });
 }
 
+export async function searchSessions(query: string): Promise<string[]> {
+  if (!query || query.length < 2) return [];
+  const res = await fetch(`${BASE}/api/search?q=${encodeURIComponent(query)}`);
+  return res.ok ? res.json() : [];
+}
+
 export function connectSSE(onFileChange: (data: { filename: string }) => void): EventSource {
   const sse = new EventSource(`${BASE}/api/events`);
   sse.addEventListener('file-change', (e: MessageEvent) => {

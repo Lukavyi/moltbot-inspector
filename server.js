@@ -383,6 +383,33 @@ const server = createServer((req, res) => {
     return;
   }
 
+  // API: full-text search across all sessions
+  if (path === "/api/search") {
+    const q = (url.searchParams.get("q") || "").toLowerCase().trim();
+    if (!q || q.length < 2) {
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end("[]");
+      return;
+    }
+    const matches = [];
+    try {
+      const files = readdirSync(SESSIONS_DIR).filter(f => f.endsWith(".jsonl"));
+      for (const f of files) {
+        try {
+          const fullPath = resolve(SESSIONS_DIR, f);
+          if (!fullPath.startsWith(SESSIONS_DIR)) continue;
+          const content = readFileSync(fullPath, "utf-8").toLowerCase();
+          if (content.includes(q)) {
+            matches.push(f);
+          }
+        } catch {}
+      }
+    } catch {}
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify(matches));
+    return;
+  }
+
   // Static files — with path traversal protection
   let filePath = path === "/" ? "/index.html" : path;
   const fullPath = resolve(STATIC_DIR, "." + filePath);
