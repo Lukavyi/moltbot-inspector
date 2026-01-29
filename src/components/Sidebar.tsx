@@ -1,4 +1,5 @@
-import { useMemo } from 'react';
+import { useMemo, useCallback } from 'react';
+import { Virtuoso } from 'react-virtuoso';
 import { shortName, formatDate, matchesFilters, sortSessions, progressKey } from '../utils';
 import type { SessionRow, Progress, DangerData, Filters } from '../types';
 
@@ -99,7 +100,6 @@ export default function Sidebar({
     return sorted.filter(r => {
       if (!matchesFilters(r, filters, progress, dangerData)) return false;
       if (!q) return true;
-      // Local metadata match
       const cl = progress[progressKey(r)]?.customLabel || '';
       const localMatch = (r.Filename || '').toLowerCase().includes(q) ||
         (r.Label || '').toLowerCase().includes(q) ||
@@ -107,7 +107,6 @@ export default function Sidebar({
         (r.Description || '').toLowerCase().includes(q) ||
         (r.Reason || '').toLowerCase().includes(q);
       if (localMatch) return true;
-      // Server-side content match
       if (contentMatches && contentMatches.has(r.Filename)) return true;
       return false;
     });
@@ -119,6 +118,48 @@ export default function Sidebar({
       : [...filters.lifecycle, key];
     setFilters({ ...filters, lifecycle: lc });
   };
+
+  const itemContent = useCallback((index: number) => {
+    const row = filtered[index];
+    if (!row) return null;
+    const fname = row.Filename;
+    const pk = progressKey(row);
+    const p = progress[pk];
+    const label = p?.customLabel || row.Label || '';
+    const totalMsgs = p?.totalMsgs || '';
+    const unreadCount = p?.unreadCount ?? 0;
+    let dateStr = '';
+    if (activeSort.startsWith('updated') && row._lastModified) {
+      dateStr = formatDate(new Date(row._lastModified));
+    } else if (row._createdAt) {
+      dateStr = formatDate(new Date(row._createdAt));
+    }
+
+    return (
+      <div
+        className={`session-item ${currentFile === fname ? 'selected' : ''}`}
+        onClick={() => onSelect(fname)}
+      >
+        <div className="name">
+          <DangerBadge filename={fname} dangerData={dangerData} />
+          <ReadBadge pKey={pk} progress={progress} />
+          <ReasonBadge row={row} />
+          {shortName(fname)}
+          {totalMsgs ? <span style={{ fontSize: 11, color: '#999', fontWeight: 400 }}>{totalMsgs} msgs</span> : null}
+        </div>
+        {label && <div className="label">{label}</div>}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 2 }}>
+          {dateStr && <span style={{ fontSize: 11, color: '#aaa' }}>{dateStr}</span>}
+          {unreadCount > 0 && (
+            <span style={{ fontSize: 11, background: '#4f46e5', color: '#fff', padding: '1px 7px', borderRadius: 10, fontWeight: 600 }}>
+              +{unreadCount}
+            </span>
+          )}
+        </div>
+        {row.Description && <div className="desc">{row.Description}</div>}
+      </div>
+    );
+  }, [filtered, progress, dangerData, currentFile, activeSort, onSelect]);
 
   return (
     <div className={`sidebar ${isOpen ? 'mobile-open' : ''}`}>
@@ -188,46 +229,12 @@ export default function Sidebar({
           : <span>{sessions.length} sessions</span>}
       </div>
       <div className="session-list">
-        {filtered.map(row => {
-          const fname = row.Filename;
-          const pk = progressKey(row);
-          const p = progress[pk];
-          const label = p?.customLabel || row.Label || '';
-          const totalMsgs = p?.totalMsgs || '';
-          const unreadCount = p?.unreadCount ?? 0;
-          let dateStr = '';
-          if (activeSort.startsWith('updated') && row._lastModified) {
-            dateStr = formatDate(new Date(row._lastModified));
-          } else if (row._createdAt) {
-            dateStr = formatDate(new Date(row._createdAt));
-          }
-
-          return (
-            <div
-              key={fname}
-              className={`session-item ${currentFile === fname ? 'selected' : ''}`}
-              onClick={() => onSelect(fname)}
-            >
-              <div className="name">
-                <DangerBadge filename={fname} dangerData={dangerData} />
-                <ReadBadge pKey={pk} progress={progress} />
-                <ReasonBadge row={row} />
-                {shortName(fname)}
-                {totalMsgs ? <span style={{ fontSize: 11, color: '#999', fontWeight: 400 }}>{totalMsgs} msgs</span> : null}
-              </div>
-              {label && <div className="label">{label}</div>}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 2 }}>
-                {dateStr && <span style={{ fontSize: 11, color: '#aaa' }}>{dateStr}</span>}
-                {unreadCount > 0 && (
-                  <span style={{ fontSize: 11, background: '#4f46e5', color: '#fff', padding: '1px 7px', borderRadius: 10, fontWeight: 600 }}>
-                    +{unreadCount}
-                  </span>
-                )}
-              </div>
-              {row.Description && <div className="desc">{row.Description}</div>}
-            </div>
-          );
-        })}
+        <Virtuoso
+          totalCount={filtered.length}
+          itemContent={itemContent}
+          overscan={200}
+          style={{ height: '100%' }}
+        />
       </div>
     </div>
   );

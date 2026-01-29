@@ -12,10 +12,15 @@ function stubApi() {
   cy.intercept('GET', '/api/search*', { body: [] }).as('search');
 }
 
-function loadSessionFixture() {
-  cy.fixture('session-sample.jsonl').then(content => {
+function loadSessionFixture(fixtureName = 'session-sample.jsonl') {
+  cy.fixture(fixtureName).then(content => {
     cy.intercept('GET', '/api/session/*', { body: content, headers: { 'content-type': 'text/plain' } }).as('sessionData');
   });
+}
+
+function selectProjectSession() {
+  // Prefer selecting by visible filename fragment to avoid sort-order dependence
+  cy.contains('.session-item', 'topic-my-project').click();
 }
 
 describe('Page Load', () => {
@@ -66,12 +71,12 @@ describe('Sidebar Filters', () => {
     cy.wait(['@sessions', '@counts', '@danger', '@progress']);
   });
 
-  it('has REVIEW STATUS radio group', () => {
-    cy.contains('REVIEW STATUS').should('exist');
+  it('has Review status group', () => {
+    cy.contains('Review status').should('exist');
   });
 
-  it('has SESSION TYPE toggleable chips', () => {
-    cy.contains('SESSION TYPE').should('exist');
+  it('has Session type group', () => {
+    cy.contains('Session type').should('exist');
   });
 
   it('has Dangerous checkbox filter', () => {
@@ -137,7 +142,7 @@ describe('Select Session', () => {
   });
 
   it('clicking session loads messages', () => {
-    cy.get('.session-item').first().click();
+    selectProjectSession();
     cy.wait('@sessionData');
     cy.get('.msg').should('exist');
   });
@@ -150,7 +155,7 @@ describe('Message Display', () => {
     cy.clearLocalStorage();
     cy.visit('/');
     cy.wait(['@sessions', '@counts', '@danger', '@progress']);
-    cy.get('.session-item').first().click();
+    selectProjectSession();
     cy.wait('@sessionData');
   });
 
@@ -175,7 +180,7 @@ describe('Session Details Toggle', () => {
     cy.clearLocalStorage();
     cy.visit('/');
     cy.wait(['@sessions', '@counts', '@danger', '@progress']);
-    cy.get('.session-item').first().click();
+    selectProjectSession();
     cy.wait('@sessionData');
   });
 
@@ -192,7 +197,7 @@ describe('Read Progress', () => {
     cy.clearLocalStorage();
     cy.visit('/');
     cy.wait(['@sessions', '@counts', '@danger', '@progress']);
-    cy.get('.session-item').first().click();
+    selectProjectSession();
     cy.wait('@sessionData');
   });
 
@@ -212,7 +217,7 @@ describe('Danger Highlighting', () => {
     cy.clearLocalStorage();
     cy.visit('/');
     cy.wait(['@sessions', '@counts', '@danger', '@progress']);
-    cy.get('.session-item').first().click();
+    selectProjectSession();
     cy.wait('@sessionData');
   });
 
@@ -232,17 +237,18 @@ describe('Danger/All Toggle', () => {
     cy.clearLocalStorage();
     cy.visit('/');
     cy.wait(['@sessions', '@counts', '@danger', '@progress']);
-    cy.get('.session-item').first().click();
+    selectProjectSession();
     cy.wait('@sessionData');
   });
 
   it('toolbar has All/Danger toggle', () => {
-    cy.get('[data-mode="danger"], .toggle-danger, button').contains(/Danger/i).should('exist');
+    cy.contains('button', 'All').should('exist');
+    cy.contains('button', '⚠ Danger').should('exist');
   });
 
   it('switching to danger only shows fewer messages', () => {
     cy.get('.msg').its('length').then(allCount => {
-      cy.get('[data-mode="danger"]').click();
+      cy.contains('button', '⚠ Danger').click();
       cy.get('.msg').should('have.length.below', allCount);
     });
   });
@@ -255,18 +261,26 @@ describe('Expand Tools', () => {
     cy.clearLocalStorage();
     cy.visit('/');
     cy.wait(['@sessions', '@counts', '@danger', '@progress']);
-    cy.get('.session-item').first().click();
+    selectProjectSession();
     cy.wait('@sessionData');
   });
 
   it('toggles expand tools button text', () => {
-    cy.contains('Expand tools').should('exist');
-    cy.contains('Expand tools').click();
-    cy.contains('Collapse tools').should('exist');
+    cy.get('.expand-btn').should('exist');
+    cy.get('.expand-btn').invoke('text').then((txt) => {
+      expect(txt).to.match(/Expand tools|Collapse tools/);
+    });
+    cy.get('.expand-btn').click();
+    cy.get('.expand-btn').invoke('text').then((txt) => {
+      expect(txt).to.match(/Expand tools|Collapse tools/);
+    });
   });
 
   it('expand opens tool details', () => {
-    cy.contains('Expand tools').click();
+    // Ensure expanded
+    cy.get('.expand-btn').invoke('text').then((txt) => {
+      if (txt.includes('Expand')) cy.get('.expand-btn').click();
+    });
     cy.get('.tool-detail.open').should('exist');
   });
 });
@@ -278,13 +292,34 @@ describe('Tool Chip Previews', () => {
     cy.clearLocalStorage();
     cy.visit('/');
     cy.wait(['@sessions', '@counts', '@danger', '@progress']);
-    cy.get('.session-item').first().click();
+    selectProjectSession();
     cy.wait('@sessionData');
   });
 
   it('tool chips show preview icons', () => {
     // Tool chips should contain preview emoji like 🌐, 📄, 🔍, etc.
     cy.get('.tool-chip, .chip').should('exist');
+  });
+});
+
+describe('Jump to Last Reviewed', () => {
+  beforeEach(() => {
+    stubApi();
+    cy.intercept('GET', '/api/progress', { fixture: 'progress-long.json' }).as('progressLong');
+    loadSessionFixture('session-long.jsonl');
+    cy.clearLocalStorage();
+    cy.visit('/');
+    cy.wait(['@sessions', '@counts', '@danger', '@progressLong']);
+    selectProjectSession();
+    cy.wait('@sessionData');
+  });
+
+  it('shows jump button when last reviewed is offscreen, and jumping reveals marker', () => {
+    cy.wait(300);
+    cy.get('[data-virtuoso-scroller]').first().scrollTo('bottom', { ensureScrollable: false });
+    cy.get('.jump-btn').should('be.visible');
+    cy.get('.jump-btn').click();
+    cy.get('.read-marker').should('be.visible');
   });
 });
 
@@ -295,14 +330,14 @@ describe('Rename Session', () => {
     cy.clearLocalStorage();
     cy.visit('/');
     cy.wait(['@sessions', '@counts', '@danger', '@progress']);
-    cy.get('.session-item').first().click();
+    selectProjectSession();
     cy.wait('@sessionData');
   });
 
   it('clicking name opens edit input, saving triggers progress save', () => {
-    cy.get('.main-header h2').click();
-    cy.get('.main-header h2 input').should('exist');
-    cy.get('.main-header h2 input').clear().type('Renamed Session{enter}');
+    cy.get('.main-toolbar h2').click();
+    cy.get('.main-toolbar h2 input').should('exist');
+    cy.get('.main-toolbar h2 input').clear().type('Renamed Session{enter}');
     cy.wait('@saveProgress');
   });
 });

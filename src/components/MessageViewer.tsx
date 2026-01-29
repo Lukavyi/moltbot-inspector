@@ -1,4 +1,5 @@
 import React, { useRef, useEffect, useState, useMemo, useCallback } from 'react';
+import { Virtuoso, VirtuosoHandle } from 'react-virtuoso';
 import { shortName } from '../utils';
 import Message from './Message';
 import type { SessionEntry, SessionRow, Progress, DangerData, DangerHit } from '../types';
@@ -27,11 +28,12 @@ export default function MessageViewer({
   allExpanded, setAllExpanded, dangerOnly, setDangerOnly,
   msgSearch, setMsgSearch, onMarkRead, onRename, detailsOpen, setDetailsOpen, loading
 }: MessageViewerProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
+  const virtuosoRef = useRef<VirtuosoHandle>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState('');
-  const [wasAtBottom, setWasAtBottom] = useState(true);
+  const [atBottom, setAtBottom] = useState(true);
   const [showNewBtn, setShowNewBtn] = useState(false);
+  const [showJumpBtn, setShowJumpBtn] = useState(false);
   const prevEntriesLen = useRef(0);
 
   const pKey = row?.SessionId || filename;
@@ -48,40 +50,80 @@ export default function MessageViewer({
   const fileDangers: DangerHit[] = dangerData[filename] || [];
   const dangerMsgIds = useMemo(() => new Set(fileDangers.map(d => d.msgId)), [fileDangers]);
 
-  // Track scroll position for auto-scroll on new messages
+  // Filter visible entries (exclude session type — it's metadata, not renderable)
+  const visibleEntries = useMemo(() => {
+    const renderable = entries.filter(e => e.type !== 'session');
+    if (dangerOnly) {
+      return renderable.filter(e => e.type === 'message' && dangerMsgIds.has(e.id!));
+    }
+    if (msgSearch) {
+      const q = msgSearch.toLowerCase();
+      return renderable.filter(e => JSON.stringify(e).toLowerCase().includes(q));
+    }
+    return renderable;
+  }, [entries, dangerOnly, dangerMsgIds, msgSearch]);
+
+  const lastMsgId = msgs.length > 0 ? msgs[msgs.length - 1].id : null;
+
+  // Find last-read index in visible entries
+  const lastReadIndex = useMemo(() => {
+    if (!lastReadId) return -1;
+    return visibleEntries.findIndex(e => e.id === lastReadId);
+  }, [visibleEntries, lastReadId]);
+
+  // Build set of "read" entry ids (all entries up to and including lastReadId)
+  const readEntryIds = useMemo(() => {
+    const set = new Set<string>();
+    if (!lastReadId) return set;
+    for (const e of visibleEntries) {
+      if (e.id) set.add(e.id);
+      if (e.id === lastReadId) break;
+    }
+    return set;
+  }, [visibleEntries, lastReadId]);
+
+  // Scroll to last-read marker on initial load
+  const initialScrollDone = useRef(false);
   useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
-    const onScroll = () => {
-      const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 50;
-      setWasAtBottom(atBottom);
-      if (atBottom) setShowNewBtn(false);
-    };
-    el.addEventListener('scroll', onScroll);
-    return () => el.removeEventListener('scroll', onScroll);
-  }, []);
+    initialScrollDone.current = false;
+  }, [filename]);
+
+  useEffect(() => {
+    if (initialScrollDone.current) return;
+    if (lastReadIndex >= 0 && visibleEntries.length > 0) {
+      initialScrollDone.current = true;
+      setTimeout(() => {
+        virtuosoRef.current?.scrollToIndex({ index: lastReadIndex, align: 'center', behavior: 'smooth' });
+      }, 100);
+    }
+  }, [lastReadIndex, visibleEntries, filename]);
 
   // Handle new entries: auto-scroll or show button
   useEffect(() => {
-    const newLen = entries.length;
+    const newLen = visibleEntries.length;
     if (newLen > prevEntriesLen.current && prevEntriesLen.current > 0) {
-      if (wasAtBottom) {
+      if (atBottom) {
         setTimeout(() => {
-          containerRef.current?.scrollTo({ top: containerRef.current!.scrollHeight, behavior: 'smooth' });
+          virtuosoRef.current?.scrollToIndex({ index: newLen - 1, behavior: 'smooth' });
         }, 50);
       } else {
         setShowNewBtn(true);
       }
     }
     prevEntriesLen.current = newLen;
-  }, [entries, wasAtBottom]);
+  }, [visibleEntries, atBottom]);
 
-  // Scroll to read marker on initial load
-  useEffect(() => {
-    if (!lastReadId || !containerRef.current) return;
-    const marker = containerRef.current.querySelector('.read-marker');
-    if (marker) setTimeout(() => marker.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
-  }, [filename, lastReadId, entries]);
+  // Show/hide jump-to-last-read button based on visibility
+  const visibleRange = useRef({ startIndex: 0, endIndex: 0 });
+  const handleRangeChanged = useCallback((range: { startIndex: number; endIndex: number }) => {
+    visibleRange.current = range;
+    if (lastReadIndex >= 0 && !p?.readAll && lastReadId !== lastMsgId && !dangerOnly && !msgSearch) {
+      const isVisible = lastReadIndex >= range.startIndex && lastReadIndex <= range.endIndex;
+      setShowJumpBtn(!isVisible);
+    } else {
+      setShowJumpBtn(false);
+    }
+  }, [lastReadIndex, p?.readAll, lastReadId, lastMsgId, dangerOnly, msgSearch]);
 
   const handleStartRename = () => {
     setEditValue(customLabel || row?.Label || '');
@@ -97,26 +139,50 @@ export default function MessageViewer({
     onMarkRead(filename, entryId);
   }, [filename, onMarkRead]);
 
-  // Filter visible entries
-  const visibleEntries = useMemo(() => {
-    if (dangerOnly) {
-      return entries.filter(e => {
-        if (e.type === 'message' && dangerMsgIds.has(e.id!)) return true;
-        return false;
-      });
+  const jumpToLastRead = () => {
+    if (lastReadIndex >= 0) {
+      virtuosoRef.current?.scrollToIndex({ index: lastReadIndex, align: 'center', behavior: 'smooth' });
     }
-    if (msgSearch) {
-      const q = msgSearch.toLowerCase();
-      return entries.filter(e => {
-        const text = JSON.stringify(e).toLowerCase();
-        return text.includes(q);
-      });
-    }
-    return entries;
-  }, [entries, dangerOnly, dangerMsgIds, msgSearch]);
+  };
 
-  const lastMsgId = msgs.length > 0 ? msgs[msgs.length - 1].id : null;
-  let markerInserted = false;
+  // Render a single item
+  const itemContent = useCallback((index: number) => {
+    const e = visibleEntries[index];
+    if (!e) return null;
+
+    if (e.type === 'message') {
+      const isRead = !!lastReadId && readEntryIds.has(e.id!);
+      const showMarker = !!lastReadId && e.id === lastReadId && e.id !== lastMsgId && !dangerOnly && !msgSearch;
+
+      return (
+        <>
+          <Message
+            entry={e}
+            isRead={isRead}
+            dangerOnly={dangerOnly}
+            fileDangers={fileDangers}
+            allExpanded={allExpanded}
+            onClick={handleClick}
+          />
+          {showMarker && (
+            <div className="read-marker">
+              Last read{p?.lastReadAt ? ` · ${new Date(p.lastReadAt).toLocaleString()}` : ''}
+            </div>
+          )}
+        </>
+      );
+    }
+    if (e.type === 'model_change') return <div className="sys-msg">Model → {e.modelId || '?'}</div>;
+    if (e.type === 'thinking_level_change') return <div className="sys-msg">Thinking → {e.thinkingLevel || '?'}</div>;
+    if (e.type === 'compaction') return (
+      <div className="compaction-msg">
+        <div className="title">⚡ Compaction{e.tokensBefore ? ` (${e.tokensBefore} tokens before)` : ''}</div>
+        <div className="summary" style={{ whiteSpace: 'pre-wrap' }}>{e.summary || ''}</div>
+      </div>
+    );
+    if (e.type === 'custom') return <div className="custom-msg">{e.customType || 'custom'}</div>;
+    return null;
+  }, [visibleEntries, lastReadId, readEntryIds, lastMsgId, dangerOnly, msgSearch, fileDangers, allExpanded, handleClick, p?.lastReadAt]);
 
   return (
     <>
@@ -183,56 +249,34 @@ export default function MessageViewer({
           </div>
         )}
       </div>
-      <div className="messages" style={{ display: 'block' }} ref={containerRef}>
+      <div className="messages" style={{ display: 'block', overflow: 'hidden' }}>
         {loading ? (
           <div style={{ padding: 40, textAlign: 'center', color: '#999' }}>Loading...</div>
         ) : (
-          visibleEntries.map((e, i) => {
-            if (e.type === 'message') {
-              const isRead = !!lastReadId && !markerInserted;
-              const showMarker = !!lastReadId && e.id === lastReadId && e.id !== lastMsgId && !dangerOnly && !msgSearch;
-              const el = (
-                <React.Fragment key={e.id || i}>
-                  <Message
-                    entry={e}
-                    isRead={isRead}
-                    dangerOnly={dangerOnly}
-                    fileDangers={fileDangers}
-                    allExpanded={allExpanded}
-                    onClick={handleClick}
-                  />
-                  {showMarker && (() => { markerInserted = true; return (
-                    <div className="read-marker">
-                      Last read{p?.lastReadAt ? ` · ${new Date(p.lastReadAt).toLocaleString()}` : ''}
-                    </div>
-                  ); })()}
-                </React.Fragment>
-              );
-              if (showMarker) markerInserted = true;
-              return el;
-            }
-            if (e.type === 'model_change') return <div key={i} className="sys-msg">Model → {e.modelId || '?'}</div>;
-            if (e.type === 'thinking_level_change') return <div key={i} className="sys-msg">Thinking → {e.thinkingLevel || '?'}</div>;
-            if (e.type === 'compaction') return (
-              <div key={i} className="compaction-msg">
-                <div className="title">⚡ Compaction{e.tokensBefore ? ` (${e.tokensBefore} tokens before)` : ''}</div>
-                <div className="summary" style={{ whiteSpace: 'pre-wrap' }}>{e.summary || ''}</div>
-              </div>
-            );
-            if (e.type === 'custom') return <div key={i} className="custom-msg">{e.customType || 'custom'}</div>;
-            return null;
-          })
+          <Virtuoso
+            ref={virtuosoRef}
+            totalCount={visibleEntries.length}
+            itemContent={itemContent}
+            atBottomStateChange={setAtBottom}
+            rangeChanged={handleRangeChanged}
+            overscan={400}
+            style={{ height: '100%' }}
+            increaseViewportBy={{ top: 200, bottom: 200 }}
+          />
         )}
       </div>
+      {showJumpBtn && (
+        <button
+          className="floating-btn jump-btn"
+          onClick={jumpToLastRead}
+          title="Jump to last reviewed message"
+        >🔖 Last reviewed</button>
+      )}
       {showNewBtn && (
         <button
-          style={{
-            position: 'absolute', bottom: 20, right: 20, zIndex: 10,
-            background: '#4f46e5', color: '#fff', border: 'none', borderRadius: 20,
-            padding: '8px 16px', fontSize: 13, cursor: 'pointer', boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
-          }}
+          className="floating-btn new-msg-btn"
           onClick={() => {
-            containerRef.current?.scrollTo({ top: containerRef.current!.scrollHeight, behavior: 'smooth' });
+            virtuosoRef.current?.scrollToIndex({ index: visibleEntries.length - 1, behavior: 'smooth' });
             setShowNewBtn(false);
           }}
         >↓ New messages</button>

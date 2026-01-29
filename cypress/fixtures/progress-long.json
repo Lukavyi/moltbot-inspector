@@ -1,0 +1,11 @@
+{
+  "abc12345": {
+    "lastReadId": "msg-40",
+    "lastReadAt": "2024-07-01T12:00:00Z",
+    "totalMsgs": 120,
+    "unreadCount": 80,
+    "readAll": false
+  },
+  "def67890": {"totalMsgs": 0, "unreadCount": 0},
+  "ghi11111": {"totalMsgs": 0, "unreadCount": 0}
+}
