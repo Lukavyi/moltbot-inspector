@@ -317,7 +317,7 @@ export default function App() {
             loading={loading}
           />
         ) : (
-          <div className="empty">🔍 Moltbot Inspector — select a session</div>
+          <div className="empty">🔍 OpenClaw Inspector — select a session</div>
         )}
       </div>
       <button className="mobile-toggle" onClick={() => setSidebarOpen(!sidebarOpen)}>☰</button>

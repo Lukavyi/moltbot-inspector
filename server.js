@@ -8,15 +8,15 @@ import { execSync } from "node:child_process";
 
 const PORT = parseInt(process.env.PORT || "9100", 10);
 const SESSIONS_DIR = process.env.SESSIONS_DIR || (() => {
-  const moltbot = join(homedir(), ".moltbot", "agents", "main", "sessions");
+  const openclaw = join(homedir(), ".openclaw", "agents", "main", "sessions");
   const clawdbot = join(homedir(), ".clawdbot", "agents", "main", "sessions");
-  if (existsSync(moltbot)) return moltbot;
+  if (existsSync(openclaw)) return openclaw;
   if (existsSync(clawdbot)) return clawdbot;
-  return moltbot; // default to .moltbot
+  return openclaw; // default to .openclaw
 })();
 const PROJECT_DIR = new URL(".", import.meta.url).pathname;
 const STATIC_DIR = join(new URL(".", import.meta.url).pathname, "dist");
-const DATA_DIR = process.env.DATA_DIR || join(homedir(), ".moltbot-inspector");
+const DATA_DIR = process.env.DATA_DIR || join(homedir(), ".openclaw-inspector");
 
 // Ensure data dir exists and seed defaults
 try {

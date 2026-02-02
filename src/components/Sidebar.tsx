@@ -164,7 +164,7 @@ export default function Sidebar({
   return (
     <div className={`sidebar ${isOpen ? 'mobile-open' : ''}`}>
       <div className="sidebar-header">
-        <h3>🔍 Moltbot Inspector</h3>
+        <h3>🔍 OpenClaw Inspector</h3>
         <button className="mobile-back" onClick={onClose}>✕</button>
       </div>
       <div className="sidebar-search">

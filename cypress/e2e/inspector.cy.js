@@ -1,4 +1,4 @@
-// E2E tests for Moltbot Inspector (React + TypeScript UI)
+// E2E tests for OpenClaw Inspector (React + TypeScript UI)
 
 function stubApi() {
   cy.intercept('GET', '/api/sessions', { fixture: 'sessions.json' }).as('sessions');
@@ -32,7 +32,7 @@ describe('Page Load', () => {
 
   it('renders the app with sidebar visible', () => {
     cy.get('.sidebar').should('be.visible');
-    cy.contains('Moltbot Inspector').should('exist');
+    cy.contains('OpenClaw Inspector').should('exist');
   });
 
   it('shows empty state when no session selected', () => {

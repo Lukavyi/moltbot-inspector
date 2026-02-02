@@ -1,10 +1,10 @@
-# Moltbot Inspector 🔍
+# OpenClaw Inspector 🔍
 
 **Your AI agent has full access to your machine. Are you sure it's behaving?**
 
-[Moltbot](https://molt.bot) (and Clawdbot) can run shell commands, edit files, push to git, install packages, access your camera, take screenshots — essentially do *anything* on your system. It runs autonomously in background sessions, cron jobs, and sub-agents. Most of the time, you never see what it does.
+[OpenClaw](https://openclaw.ai) (and Clawdbot) can run shell commands, edit files, push to git, install packages, access your camera, take screenshots — essentially do *anything* on your system. It runs autonomously in background sessions, cron jobs, and sub-agents. Most of the time, you never see what it does.
 
-**Moltbot Inspector** lets you see everything. It's a local web app that reads your bot's session history and shows you exactly what happened — every command, every file edit, every tool call. It automatically flags dangerous actions so you can catch problems before they escalate.
+**OpenClaw Inspector** lets you see everything. It's a local web app that reads your bot's session history and shows you exactly what happened — every command, every file edit, every tool call. It automatically flags dangerous actions so you can catch problems before they escalate.
 
 ## When you need this
 
@@ -17,7 +17,7 @@
 ## Quick start
 
 ```bash
-npx moltbot-inspector
+npx openclaw-inspector
 ```
 
 Opens at http://localhost:9100. That's it.
@@ -25,13 +25,13 @@ Opens at http://localhost:9100. That's it.
 ### Custom port
 
 ```bash
-PORT=9101 npx moltbot-inspector
+PORT=9101 npx openclaw-inspector
 ```
 
 ### Custom sessions directory
 
 ```bash
-SESSIONS_DIR=~/.moltbot/agents/main/sessions npx moltbot-inspector
+SESSIONS_DIR=~/.openclaw/agents/main/sessions npx openclaw-inspector
 ```
 
 ## What it detects
@@ -48,7 +48,7 @@ SESSIONS_DIR=~/.moltbot/agents/main/sessions npx moltbot-inspector
 | **Surveillance** | Screenshots, camera access, screen recording, location | 🟡 Warning |
 | **Cron changes** | `crontab`, `launchctl`, `systemctl` | 🟡 Warning |
 
-Rules are fully customizable — edit `~/.moltbot-inspector/danger-rules.json`.
+Rules are fully customizable — edit `~/.openclaw-inspector/danger-rules.json`.
 
 ## Features
 
@@ -75,7 +75,7 @@ Inspector watches your sessions directory in real-time. When your bot starts a n
 - 🔒 **100% local** — everything runs on your machine. No cloud, no telemetry, no external connections
 - 📁 **Read-only** — Inspector never modifies, deletes, or interferes with your sessions. It only reads JSONL files from disk
 - 🏠 **Localhost only** — server binds to `127.0.0.1` by default, inaccessible from the network
-- 💾 **Your data stays yours** — progress and settings stored in `~/.moltbot-inspector/`, never sent anywhere
+- 💾 **Your data stays yours** — progress and settings stored in `~/.openclaw-inspector/`, never sent anywhere
 
 ## Configuration
 
@@ -85,10 +85,10 @@ Inspector watches your sessions directory in real-time. When your bot starts a n
 |----------|---------|-------------|
 | `PORT` | `9100` | Server port |
 | `HOST` | `127.0.0.1` | Bind address (localhost only by default) |
-| `SESSIONS_DIR` | auto-detect (`~/.moltbot/` or `~/.clawdbot/`) | Path to session JSONL files |
-| `DATA_DIR` | `~/.moltbot-inspector` | User config and progress storage |
+| `SESSIONS_DIR` | auto-detect (`~/.openclaw/` or `~/.clawdbot/`) | Path to session JSONL files |
+| `DATA_DIR` | `~/.openclaw-inspector` | User config and progress storage |
 
-### User data (`~/.moltbot-inspector/`)
+### User data (`~/.openclaw-inspector/`)
 
 Created automatically on first launch:
 
@@ -109,8 +109,8 @@ Then open `https://your-machine.tailnet.ts.net:9100` from any device on your tai
 ## Development
 
 ```bash
-git clone https://github.com/Lukavyi/moltbot-inspector.git
-cd moltbot-inspector
+git clone https://github.com/Lukavyi/openclaw-inspector.git
+cd openclaw-inspector
 npm install
 
 # Terminal 1: Backend
@@ -127,9 +127,9 @@ npm test          # Unit tests (Vitest)
 npm run build     # Production build → dist/
 ```
 
-## Built with Moltbot 🤖
+## Built with OpenClaw 🤖
 
-This entire project was vibe-coded through [Moltbot](https://molt.bot) — from the first line of code to npm publish. No manual coding involved. The irony of an AI agent building its own inspector is not lost on us.
+This entire project was vibe-coded through [OpenClaw](https://openclaw.ai) — from the first line of code to npm publish. No manual coding involved. The irony of an AI agent building its own inspector is not lost on us.
 
 ## License
 

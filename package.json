@@ -1,10 +1,10 @@
 {
-  "name": "moltbot-inspector",
+  "name": "openclaw-inspector",
   "version": "1.0.1",
-  "description": "Review every conversation your Moltbot has ever had — including deleted sessions — and flag dangerous actions it may have taken without your knowledge.",
+  "description": "Review every conversation your OpenClaw agent has ever had — including deleted sessions — and flag dangerous actions it may have taken without your knowledge.",
   "main": "server.js",
   "bin": {
-    "moltbot-inspector": "server.js"
+    "openclaw-inspector": "server.js"
   },
   "files": [
     "dist/",
@@ -26,10 +26,10 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Lukavyi/moltbot-inspector.git"
+    "url": "git+https://github.com/Lukavyi/openclaw-inspector.git"
   },
   "keywords": [
-    "moltbot",
+    "openclaw",
     "clawdbot",
     "inspector",
     "session-viewer",
@@ -42,9 +42,9 @@
   "license": "MIT",
   "type": "module",
   "bugs": {
-    "url": "https://github.com/Lukavyi/moltbot-inspector/issues"
+    "url": "https://github.com/Lukavyi/openclaw-inspector/issues"
   },
-  "homepage": "https://github.com/Lukavyi/moltbot-inspector#readme",
+  "homepage": "https://github.com/Lukavyi/openclaw-inspector#readme",
   "engines": {
     "node": ">=18"
   },
