@@ -7,6 +7,11 @@
 - Every new feature or bug fix must have test coverage before merging.
 - Run `npx cypress run` for E2E tests when UI behavior changes.
 
+### Documentation
+- After every change, verify that README.md accurately reflects current functionality.
+- If a feature was added, changed, or removed — update README accordingly.
+- README is the public face of the project; it must always match what the code actually does.
+
 ### Build
 - Run `npx vite build` after changes — must compile without errors.
 - Restart `node server.js` after build to serve updated dist.
