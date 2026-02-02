@@ -266,7 +266,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sa
 }
 
 /* Search clear buttons */
-.sidebar-search, .toolbar-search-wrap {
+.toolbar-search-wrap {
   position: relative;
 }
 .search-clear {
