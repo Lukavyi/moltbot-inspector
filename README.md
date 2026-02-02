@@ -127,6 +127,12 @@ npm test          # Unit tests (Vitest)
 npm run build     # Production build → dist/
 ```
 
+## ⚠️ Compatibility note
+
+This project has been tested **exclusively with Telegram** sessions. Other messaging channels (Discord, Signal, WhatsApp, Slack, etc.) may have different session file structures or message formats that could cause display issues or missing data.
+
+If you use OpenClaw with a non-Telegram channel and encounter problems, please [open an issue](https://github.com/Lukavyi/openclaw-inspector/issues) — PRs welcome!
+
 ## Built with OpenClaw 🤖
 
 This entire project was vibe-coded through [OpenClaw](https://openclaw.ai) — from the first line of code to npm publish. No manual coding involved. The irony of an AI agent building its own inspector is not lost on us.
