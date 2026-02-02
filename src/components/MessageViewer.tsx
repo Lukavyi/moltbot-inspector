@@ -38,6 +38,7 @@ export default function MessageViewer({
   const [showNewBtn, setShowNewBtn] = useState(false);
   const [showJumpBtn, setShowJumpBtn] = useState(false);
   const prevEntriesLen = useRef(0);
+  const hasNewMessages = useRef(false);
 
   const pKey = row ? progressKey(row) : filename;
   const p = progress[pKey];
@@ -90,6 +91,7 @@ export default function MessageViewer({
   useEffect(() => {
     initialScrollDone.current = false;
     prevEntriesLen.current = 0;
+    hasNewMessages.current = false;
     setAtBottom(false);
     setShowNewBtn(false);
   }, [filename]);
@@ -117,10 +119,12 @@ export default function MessageViewer({
     const newLen = visibleEntries.length;
     if (newLen > prevEntriesLen.current && prevEntriesLen.current > 0) {
       if (atBottom) {
+        hasNewMessages.current = false;
         setTimeout(() => {
           virtuosoRef.current?.scrollToIndex({ index: newLen - 1, behavior: 'smooth' });
         }, 50);
       } else {
+        hasNewMessages.current = true;
         setShowNewBtn(true);
       }
     }
@@ -288,7 +292,11 @@ export default function MessageViewer({
             ref={virtuosoRef}
             totalCount={visibleEntries.length}
             itemContent={itemContent}
-            atBottomStateChange={(bottom) => { setAtBottom(bottom); if (bottom) setShowNewBtn(false); }}
+            atBottomStateChange={(bottom) => {
+              setAtBottom(bottom);
+              if (bottom) { setShowNewBtn(false); hasNewMessages.current = false; }
+              else if (hasNewMessages.current) { setShowNewBtn(true); }
+            }}
             rangeChanged={handleRangeChanged}
             overscan={400}
             style={{ height: '100%' }}
