@@ -2,6 +2,7 @@ import { useMemo, useCallback, useRef, useEffect } from 'react';
 import { Virtuoso, VirtuosoHandle } from 'react-virtuoso';
 import { shortName, formatDate, matchesFilters, sortSessions, progressKey } from '../utils';
 import type { SessionRow, Progress, DangerData, Filters } from '../types';
+import type { SubagentInfo } from '../api';
 
 const READ_FILTERS = [
   { key: 'all', label: 'All' },
@@ -66,6 +67,7 @@ interface SidebarProps {
   searchQuery: string;
   setSearchQuery: (q: string) => void;
   contentMatches: Set<string> | null;
+  subagentMap: Record<string, SubagentInfo>;
   onSelect: (filename: string) => void;
   isOpen: boolean;
   onClose: () => void;
@@ -74,8 +76,16 @@ interface SidebarProps {
 export default function Sidebar({
   sessions, progress, dangerData, currentFile,
   filters, setFilters, activeSort, setActiveSort,
-  searchQuery, setSearchQuery, contentMatches, onSelect, isOpen, onClose
+  searchQuery, setSearchQuery, contentMatches, subagentMap, onSelect, isOpen, onClose
 }: SidebarProps) {
+  // Build set of filenames that are subagent sessions (to hide from main list)
+  const subagentFilenames = useMemo(() => {
+    const set = new Set<string>();
+    for (const info of Object.values(subagentMap)) {
+      set.add(info.filename);
+    }
+    return set;
+  }, [subagentMap]);
   // Count sessions per filter for badges
   const counts = useMemo(() => {
     const c = { all: 0, unread: 0, partial: 0, done: 0, active: 0, orphan: 0, deleted: 0, danger: 0 };
@@ -98,6 +108,8 @@ export default function Sidebar({
     const q = searchQuery.toLowerCase();
     const sorted = sortSessions(sessions, activeSort, progress);
     return sorted.filter(r => {
+      // Hide subagent sessions — they're shown inline in parent
+      if (subagentFilenames.has(r.Filename)) return false;
       if (!matchesFilters(r, filters, progress, dangerData)) return false;
       if (!q) return true;
       const cl = progress[progressKey(r)]?.customLabel || '';
@@ -110,7 +122,7 @@ export default function Sidebar({
       if (contentMatches && contentMatches.has(r.Filename)) return true;
       return false;
     });
-  }, [sessions, filters, activeSort, searchQuery, progress, dangerData, contentMatches]);
+  }, [sessions, filters, activeSort, searchQuery, progress, dangerData, contentMatches, subagentFilenames]);
 
   const virtuosoRef = useRef<VirtuosoHandle>(null);
   const initialScrollDone = useRef(false);

@@ -362,6 +362,7 @@ export default function App() {
         searchQuery={sidebarSearch}
         setSearchQuery={setSidebarSearch}
         contentMatches={contentMatches}
+        subagentMap={subagentMap}
         onSelect={handleSelectSession}
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
