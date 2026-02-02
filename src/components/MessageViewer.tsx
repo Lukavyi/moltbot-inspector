@@ -225,6 +225,7 @@ export default function MessageViewer({
               progress={progress}
               dangerData={dangerData}
               allExpanded={allExpanded}
+              subagentMap={subagentMap}
               onMarkRead={onSubagentMarkRead}
             />
           )}

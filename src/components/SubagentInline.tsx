@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { fetchSession } from '../api';
+import type { SubagentInfo } from '../api';
 import Message from './Message';
-import type { SessionEntry, DangerHit, Progress, ProgressEntry } from '../types';
+import type { SessionEntry, DangerHit, Progress } from '../types';
 
 interface SubagentInlineProps {
   childSessionKey: string;
@@ -11,24 +12,20 @@ interface SubagentInlineProps {
   progress: Progress;
   dangerData: Record<string, DangerHit[]>;
   allExpanded: boolean;
+  subagentMap: Record<string, SubagentInfo>;
   onMarkRead: (progressKey: string, messageId: string) => void;
 }
 
-const KNOWN_TYPES = new Set([
-  'session', 'message', 'model_change',
-  'thinking_level_change', 'compaction', 'custom',
-]);
-
 export default function SubagentInline({
   childSessionKey, filename, label, task,
-  progress, dangerData, allExpanded, onMarkRead,
+  progress, dangerData, allExpanded, subagentMap, onMarkRead,
 }: SubagentInlineProps) {
-  const [expanded, setExpanded] = useState(false);
+  const [manualToggle, setManualToggle] = useState<boolean | null>(null);
+  const expanded = manualToggle !== null ? manualToggle : allExpanded;
   const [entries, setEntries] = useState<SessionEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [loaded, setLoaded] = useState(false);
 
-  // Progress key for this subagent = childSessionKey
   const pKey = childSessionKey;
   const p = progress[pKey];
   const lastReadId = p?.lastReadId;
@@ -40,10 +37,7 @@ export default function SubagentInline({
       const parsed: SessionEntry[] = [];
       for (const line of text.split('\n')) {
         if (!line.trim()) continue;
-        try {
-          const obj = JSON.parse(line) as SessionEntry;
-          parsed.push(obj);
-        } catch {}
+        try { parsed.push(JSON.parse(line) as SessionEntry); } catch {}
       }
       setEntries(parsed);
       setLoaded(true);
@@ -54,6 +48,33 @@ export default function SubagentInline({
   const msgs = useMemo(() => entries.filter(e => e.type === 'message'), [entries]);
   const visibleEntries = useMemo(() => entries.filter(e => e.type !== 'session'), [entries]);
   const fileDangers: DangerHit[] = dangerData[filename] || [];
+
+  // Detect nested subagents in this subagent's entries
+  const nestedSubagents = useMemo(() => {
+    const map = new Map<string, { childSessionKey: string; info: SubagentInfo; task: string }>();
+    for (const e of entries) {
+      if (e.type !== 'message' || e.message?.role !== 'toolResult') continue;
+      if (e.message.toolName !== 'sessions_spawn') continue;
+      const text = (e.message.content || []).map(c => ('text' in c ? (c as { text: string }).text : '')).join('');
+      try {
+        const parsed = JSON.parse(text);
+        const key = parsed.childSessionKey;
+        if (key && subagentMap[key]) {
+          let nestedTask = '';
+          for (const e2 of entries) {
+            if (e2.type !== 'message' || e2.message?.role !== 'assistant') continue;
+            for (const b of e2.message.content || []) {
+              if (b.type === 'toolCall' && (b as { id?: string }).id === e.message!.toolCallId) {
+                nestedTask = ((b as { arguments?: { task?: string } }).arguments?.task) || '';
+              }
+            }
+          }
+          map.set(e.id!, { childSessionKey: key, info: subagentMap[key], task: nestedTask });
+        }
+      } catch {}
+    }
+    return map;
+  }, [entries, subagentMap]);
 
   const readEntryIds = useMemo(() => {
     const set = new Set<string>();
@@ -79,7 +100,7 @@ export default function SubagentInline({
 
   return (
     <div className={`subagent-inline ${expanded ? 'expanded' : ''}`}>
-      <div className="subagent-header" onClick={() => setExpanded(!expanded)}>
+      <div className="subagent-header" onClick={() => setManualToggle(!expanded)}>
         <span className="subagent-icon">🚀</span>
         <span className="subagent-label">{displayLabel}</span>
         {totalMsgs > 0 && (
@@ -98,6 +119,7 @@ export default function SubagentInline({
               const isRead = !!lastReadId && readEntryIds.has(e.id!);
               const lastMsg = msgs[msgs.length - 1];
               const showMarker = !!lastReadId && e.id === lastReadId && e.id !== lastMsg?.id;
+              const nested = e.id ? nestedSubagents.get(e.id) : undefined;
               return (
                 <React.Fragment key={e.id || i}>
                   <Message
@@ -108,6 +130,19 @@ export default function SubagentInline({
                     allExpanded={allExpanded}
                     onClick={handleClick}
                   />
+                  {nested && (
+                    <SubagentInline
+                      childSessionKey={nested.childSessionKey}
+                      filename={nested.info.filename}
+                      label={nested.info.label}
+                      task={nested.task}
+                      progress={progress}
+                      dangerData={dangerData}
+                      allExpanded={allExpanded}
+                      subagentMap={subagentMap}
+                      onMarkRead={onMarkRead}
+                    />
+                  )}
                   {showMarker && (
                     <div className="read-marker">
                       Last read{p?.lastReadAt ? ` · ${new Date(p.lastReadAt).toLocaleString()}` : ''}
