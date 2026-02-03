@@ -4,11 +4,10 @@ export function formatDate(d: Date): string {
   if (!d || isNaN(d.getTime())) return '';
   const now = new Date();
   const pad = (n: number) => String(n).padStart(2, '0');
-  const date = `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()}`;
   const time = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
-  if (d.toDateString() === now.toDateString()) return time;
+  // Always show date (without year if same year)
   if (d.getFullYear() === now.getFullYear()) return `${pad(d.getDate())}.${pad(d.getMonth() + 1)} ${time}`;
-  return `${date} ${time}`;
+  return `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()} ${time}`;
 }
 
 export function extractTopicId(filename: string): string | null {
